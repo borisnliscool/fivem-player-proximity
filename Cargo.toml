@@ -1,0 +1,14 @@
+[package]
+name = "fivem-player-proximity"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+difference = "2.0.0"
+failure = "0.1.8"
+hotwatch = "0.5.0"
+lazy_static = "1.4.0"
+notify = "6.0.1"
+regex = "1.9.3"
