@@ -1,15 +1,18 @@
-use eframe::egui;
+use egui::{Color32, FontId, RichText};
 use hotwatch::{
     blocking::{Flow, Hotwatch},
     Event,
 };
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{env, io::{Read, Seek, SeekFrom}};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::{collections::HashMap, thread};
+use std::{
+    env,
+    io::{Read, Seek, SeekFrom},
+};
 
 fn get_logs_folder() -> Result<String, env::VarError> {
     let local_app_data = env::var("LOCALAPPDATA")?;
@@ -53,6 +56,13 @@ fn process_log_diff(last_contents: &str, new_contents: &str) {
     for diff_item in diff.diffs {
         match diff_item {
             difference::Difference::Add(addition) => {
+                for cap in exit_regex.captures_iter(&addition) {
+                    let name = &cap["name"];
+
+                    let mut players = NEARBY_PLAYERS.lock().unwrap();
+                    players.remove(name);
+                }
+
                 for cap in enter_regex.captures_iter(&addition) {
                     let name = &cap["name"];
 
@@ -64,47 +74,59 @@ fn process_log_diff(last_contents: &str, new_contents: &str) {
                         },
                     );
                 }
-
-                for cap in exit_regex.captures_iter(&addition) {
-                    let name = &cap["name"];
-
-                    let mut players = NEARBY_PLAYERS.lock().unwrap();
-                    players.remove(name);
-                };
             }
             _ => {}
         }
     }
 }
 
+#[derive(Default)]
 struct MyApp {}
 
-impl Default for MyApp {
-    fn default() -> Self {
-        Self {}
-    }
-}
-
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let players = NEARBY_PLAYERS.lock().unwrap();
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading(format!("Nearby Players ({})", players.len()));
-            // Iterate over player names and print them
-            ui.vertical(|ui| {
-                for player in players.values() {
-                    ui.label(player.name.clone());
-                }
-            });
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        egui::Rgba::TRANSPARENT.to_array() // Make sure we don't paint anything behind the rounded corners
+    }
 
-            ctx.request_repaint();
-        });
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let panel_frame = egui::Frame {
+            inner_margin: 5.0.into(), // so the stroke is within the bounds
+            ..Default::default()
+        };
+
+        let players = NEARBY_PLAYERS.lock().unwrap();
+        egui::CentralPanel::default()
+            .frame(panel_frame)
+            .show(ctx, |ui| {
+                // ui.heading(format!("Nearby Players ({})", players.len()));
+                ui.heading(
+                    RichText::new(format!("Nearby Players ({})", players.len()))
+                        .font(FontId::proportional(20.0))
+                        .color(Color32::WHITE),
+                );
+
+                // Iterate over player names and print them
+                ui.vertical(|ui| {
+                    for player in players.values() {
+                        // ui.label(player.name.clone());
+                        ui.label(
+                            RichText::new(player.name.clone())
+                                .font(FontId::proportional(17.0))
+                                .color(Color32::RED),
+                        );
+                    }
+                });
+
+                ctx.request_repaint();
+            });
     }
 }
 
 fn run_ui() {
     let options = eframe::NativeOptions {
-        initial_window_size: Some(egui::vec2(320.0, 240.0)),
+        transparent: true,
+        min_window_size: Some(egui::vec2(400.0, 100.0)),
+        initial_window_size: Some(egui::vec2(400.0, 240.0)),
         ..Default::default()
     };
     let _ = eframe::run_native(
@@ -141,7 +163,6 @@ fn watch_log_file(log_file: &PathBuf, mut last_file_size: u64) -> Result<(), fai
 
     Ok(())
 }
-
 
 fn run_watcher() -> Result<(), failure::Error> {
     let logs_folder = get_logs_folder()?;
