@@ -1,5 +1,7 @@
-use hotkey;
 use egui::{Color32, FontId, RichText};
+use egui_overlay::{egui_backend, egui_window_glfw_passthrough, EguiOverlay};
+use egui_render_three_d::ThreeDBackend as DefaultGfxBackend;
+use hotkey;
 use hotwatch::{
     blocking::{Flow, Hotwatch},
     Event,
@@ -14,8 +16,6 @@ use std::{
     env,
     io::{Read, Seek, SeekFrom},
 };
-use egui_overlay::{egui_backend, egui_window_glfw_passthrough, EguiOverlay};
-use egui_render_three_d::ThreeDBackend as DefaultGfxBackend;
 
 fn get_logs_folder() -> Result<String, env::VarError> {
     let local_app_data = env::var("LOCALAPPDATA")?;
