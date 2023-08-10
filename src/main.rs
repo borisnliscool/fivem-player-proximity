@@ -1,3 +1,4 @@
+use hotkey;
 use egui::{Color32, FontId, RichText};
 use hotwatch::{
     blocking::{Flow, Hotwatch},
@@ -13,6 +14,8 @@ use std::{
     env,
     io::{Read, Seek, SeekFrom},
 };
+use egui_overlay::{egui_backend, egui_window_glfw_passthrough, EguiOverlay};
+use egui_render_three_d::ThreeDBackend as DefaultGfxBackend;
 
 fn get_logs_folder() -> Result<String, env::VarError> {
     let local_app_data = env::var("LOCALAPPDATA")?;
@@ -46,6 +49,7 @@ struct Player {
 
 lazy_static! {
     static ref NEARBY_PLAYERS: Mutex<HashMap<String, Player>> = Mutex::new(HashMap::new());
+    static ref MOVABLE: Mutex<bool> = Mutex::new(false);
 }
 
 fn process_log_diff(last_contents: &str, new_contents: &str) {
@@ -78,62 +82,6 @@ fn process_log_diff(last_contents: &str, new_contents: &str) {
             _ => {}
         }
     }
-}
-
-#[derive(Default)]
-struct MyApp {}
-
-impl eframe::App for MyApp {
-    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        egui::Rgba::TRANSPARENT.to_array() // Make sure we don't paint anything behind the rounded corners
-    }
-
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let panel_frame = egui::Frame {
-            inner_margin: 5.0.into(), // so the stroke is within the bounds
-            ..Default::default()
-        };
-
-        let players = NEARBY_PLAYERS.lock().unwrap();
-        egui::CentralPanel::default()
-            .frame(panel_frame)
-            .show(ctx, |ui| {
-                // ui.heading(format!("Nearby Players ({})", players.len()));
-                ui.heading(
-                    RichText::new(format!("Nearby Players ({})", players.len()))
-                        .font(FontId::proportional(20.0))
-                        .color(Color32::WHITE),
-                );
-
-                // Iterate over player names and print them
-                ui.vertical(|ui| {
-                    for player in players.values() {
-                        // ui.label(player.name.clone());
-                        ui.label(
-                            RichText::new(player.name.clone())
-                                .font(FontId::proportional(17.0))
-                                .color(Color32::RED),
-                        );
-                    }
-                });
-
-                ctx.request_repaint();
-            });
-    }
-}
-
-fn run_ui() {
-    let options = eframe::NativeOptions {
-        transparent: true,
-        min_window_size: Some(egui::vec2(400.0, 100.0)),
-        initial_window_size: Some(egui::vec2(400.0, 240.0)),
-        ..Default::default()
-    };
-    let _ = eframe::run_native(
-        "FiveM nearby player detector",
-        options,
-        Box::new(|_cc| Box::<MyApp>::default()),
-    );
 }
 
 fn watch_log_file(log_file: &PathBuf, mut last_file_size: u64) -> Result<(), failure::Error> {
@@ -182,9 +130,72 @@ fn main() {
         }
     });
 
-    // Run the UI on the main thread
-    run_ui();
+    // Spawn the hotkey thread
+    let hotkey_thread = thread::spawn(|| {
+        let mut hk = hotkey::Listener::new();
+        hk.register_hotkey(
+            hotkey::modifiers::CONTROL | hotkey::modifiers::SHIFT,
+            36 as u32,
+            || {
+                let mut movable = MOVABLE.lock().unwrap();
+                *movable = !*movable;
+            },
+        )
+        .unwrap();
 
-    // Wait for the file watcher thread to finish
-    let _ = file_watcher.join().expect("File watcher thread panicked");
+        hk.listen();
+    });
+
+    // Run the UI on the main thread
+    println!("Starting overlay");
+    egui_overlay::start(HelloWorld {});
+
+    file_watcher.join().expect("File watcher thread panicked");
+    hotkey_thread.join().expect("Hotkey thread panicked");
+}
+
+pub struct HelloWorld {}
+impl EguiOverlay for HelloWorld {
+    fn gui_run(
+        &mut self,
+        egui_context: &egui_backend::egui::Context,
+        _default_gfx_backend: &mut DefaultGfxBackend,
+        glfw_backend: &mut egui_window_glfw_passthrough::GlfwBackend,
+    ) {
+        let players = NEARBY_PLAYERS.lock().unwrap();
+        let panel_frame = egui::Frame {
+            inner_margin: 5.0.into(), // so the stroke is within the bounds
+            ..Default::default()
+        };
+
+        let movable = *MOVABLE.lock().unwrap();
+
+        glfw_backend.window.set_decorated(movable);
+
+        // just some controls to show how you can use glfw_backend
+        egui_backend::egui::CentralPanel::default()
+            .frame(panel_frame)
+            .show(egui_context, |ui| {
+                ui.heading(
+                    RichText::new(format!("Nearby Players ({})", players.len()))
+                        .font(FontId::proportional(20.0))
+                        .color(Color32::WHITE),
+                );
+
+                // Iterate over player names and print them
+                ui.vertical(|ui| {
+                    for player in players.values() {
+                        // ui.label(player.name.clone());
+                        ui.label(
+                            RichText::new(player.name.clone())
+                                .font(FontId::proportional(17.0))
+                                .color(Color32::RED),
+                        );
+                    }
+                });
+            });
+
+        glfw_backend.window.set_mouse_passthrough(!movable);
+        egui_context.request_repaint();
+    }
 }
