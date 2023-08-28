@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use crate::file_watcher::start_file_watcher_thread;
 use crate::hotkeys::start_hotkey_thread;
-use crate::ui::HelloWorld;
+use crate::ui::Overlay;
 
 mod file_watcher;
 mod files;
@@ -31,7 +31,7 @@ fn main() {
 
     // Run the UI on the main thread
     println!("Starting overlay");
-    egui_overlay::start(HelloWorld {});
+    egui_overlay::start(Overlay {});
 
     file_watcher.join().expect("File watcher thread panicked");
     hotkey_thread.join().expect("Hotkey thread panicked");
