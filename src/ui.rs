@@ -34,23 +34,23 @@ impl EguiOverlay for Overlay {
 
                 if movable {
                     ui.label("Press CTRL + SHIFT + HOME to remove borders.");
-                } else {
-                    // Convert players to a Vec and iterate over chunks of 25
-                    let player_values: Vec<_> = players.values().collect();
-                    ui.horizontal(|ui| {
-                        for (index, chunk) in player_values.chunks(25).enumerate() {
-                            ui.vertical(|ui| {
-                                for player in chunk {
-                                    ui.label(
-                                        RichText::new(player.name.clone())
-                                            .font(FontId::proportional(17.0))
-                                            .color(Color32::RED),
-                                    );
-                                }
-                            });
-                        }
-                    });
                 }
+
+                // Convert players to a Vec and iterate over chunks of 25
+                let player_values: Vec<_> = players.values().collect();
+                ui.horizontal(|ui| {
+                    for (_index, chunk) in player_values.chunks(25).enumerate() {
+                        ui.vertical(|ui| {
+                            for player in chunk {
+                                ui.label(
+                                    RichText::new(player.name.clone())
+                                        .font(FontId::proportional(17.0))
+                                        .color(Color32::RED),
+                                );
+                            }
+                        });
+                    }
+                });
             });
 
         glfw_backend.window.set_mouse_passthrough(!movable);
