@@ -1,16 +1,41 @@
-name: Rust
+name: Release Rust Binary
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   release:
+    name: Create Release
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: manoadamro/rust-release@v1
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
         with:
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.repository }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          profile: minimal
+          toolchain: stable
+
+      - name: Build Rust binary
+        run: cargo build --release
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/release/fivem-player-proximity.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: target/release/fivem-player-proximity.exe
+          asset_name: fivem-player-proximity.exe
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
