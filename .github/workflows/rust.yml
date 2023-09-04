@@ -5,37 +5,26 @@ on:
     branches: ["main"]
 
 jobs:
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
+  build-win:
+    runs-on: windows-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v1
 
-      - name: Set up Rust
+      - name: Install latest rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
+          default: true
+          override: true
 
-      - name: Build Rust binary
-        run: cargo build --release
+      - name: Build
+        run: cargo build --all --release
 
-      - name: Create Release
-        id: create_release
+      - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: target/release/fivem-player-proximity.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: target/release/fivem-player-proximity.exe
-          asset_name: fivem-player-proximity.exe
-          asset_content_type: application/octet-stream
+          files: target/release/fivem-player-proxy.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
