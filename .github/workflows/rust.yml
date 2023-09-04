@@ -1,6 +1,9 @@
 name: Release Rust Binary
 
-on: [push]
+on:
+  push:
+    tags:
+      - "v*.*.*"
 
 jobs:
   build-win:
