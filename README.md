@@ -4,6 +4,8 @@ This program then conveniently displays their names on a user-friendly UI.
 
 Press `CTRL+SHIFT+HOME` to toggle overlay movability.
 
-> **Note** <br>
-> You must be on the `BETA` update channel of FiveM.
-> You must also run this program after joining the server.
+### Installation
+1. Make sure you are on the `BETA` update channel of FiveM.
+2. Enable logging of onesync events by typing `developer 1` in the F8 console.
+3. Join your server.
+4. Run the program.
